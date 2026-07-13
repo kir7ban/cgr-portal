@@ -1,0 +1,22 @@
+{
+  "name": "cgr-portal",
+  "version": "0.1.0",
+  "description": "Bosch Internal Communications Platform",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "test:coverage": "turbo run test:coverage",
+    "lint": "turbo run lint",
+    "format": "turbo run format"
+  },
+  "devDependencies": {
+    "turbo": "^1.10.0"
+  }
+}
