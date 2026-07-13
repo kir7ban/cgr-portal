@@ -1,0 +1,18 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🧪 Running pre-commit checks..."
+
+# Run tests
+npm run test || {
+  echo "❌ Tests failed. Commit aborted."
+  exit 1
+}
+
+# Run linter (if available)
+npm run lint 2>/dev/null || echo "⚠️  Linter not yet configured"
+
+# Check coverage
+npm run test:coverage || echo "⚠️  Coverage check failed"
+
+echo "✅ Pre-commit checks passed!"

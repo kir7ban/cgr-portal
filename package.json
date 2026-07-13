@@ -14,9 +14,11 @@
     "test:watch": "turbo run test:watch",
     "test:coverage": "turbo run test:coverage",
     "lint": "turbo run lint",
-    "format": "turbo run format"
+    "format": "turbo run format",
+    "prepare": "husky install"
   },
   "devDependencies": {
-    "turbo": "^1.10.0"
+    "turbo": "^1.10.0",
+    "husky": "^8.0.0"
   }
 }

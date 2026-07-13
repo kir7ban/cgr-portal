@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { MOCK_USERS, ROLE_PERMISSIONS } from './users.mock';
 
 interface LoginDto {
   username: string;
@@ -11,37 +12,6 @@ interface User {
   username: string;
   role: 'EMPLOYEE' | 'COMMS_OFFICER' | 'ADMIN';
 }
-
-const MOCK_USERS: Record<string, { id: string; password: string; role: User['role'] }> = {
-  'john.doe': {
-    id: '1',
-    password: 'password123',
-    role: 'EMPLOYEE',
-  },
-  'alice.smith': {
-    id: '2',
-    password: 'password123',
-    role: 'COMMS_OFFICER',
-  },
-  'bob.admin': {
-    id: '3',
-    password: 'password123',
-    role: 'ADMIN',
-  },
-};
-
-const ROLE_PERMISSIONS: Record<User['role'], string[]> = {
-  EMPLOYEE: ['view_feed', 'comment', 'react', 'share'],
-  COMMS_OFFICER: ['view_feed', 'create_post', 'edit_own_posts', 'comment', 'react', 'share'],
-  ADMIN: [
-    'view_feed',
-    'approve_post',
-    'reject_post',
-    'revoke_post',
-    'view_audit_trail',
-    'manage_audiences',
-  ],
-};
 
 @Injectable()
 export class AuthService {
