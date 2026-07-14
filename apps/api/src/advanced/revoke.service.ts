@@ -3,6 +3,7 @@ import { PostService, PostDocument } from '../posts/post.service';
 import { DatabaseService } from '../database/database.service';
 import { AuditingService } from '../database/auditing.service';
 import { AuthorizationService } from '../auth/authorization.service';
+import { PostState, POST_STATES } from '../domain/state-types';
 
 /**
  * DTO for revoking a post with optional reason
@@ -20,7 +21,7 @@ export interface RevocationRecord {
   revokedBy: string;
   revokedAt: string;
   reason?: string;
-  previousState: string;
+  previousState: PostState;
 }
 
 /**
@@ -156,14 +157,14 @@ export class RevocationService {
     }
 
     // Verify post is in PUBLISHED state
-    if (post.state !== 'PUBLISHED') {
+    if (post.state !== POST_STATES.PUBLISHED) {
       throw new BadRequestException(
         `Cannot revoke post in ${post.state} state. Only PUBLISHED posts can be revoked.`,
       );
     }
 
     // Update post state to REVOKED (removes from feed)
-    const revokedPost = await this.postService.updatePostState(postId, 'REVOKED');
+    const revokedPost = await this.postService.updatePostState(postId, POST_STATES.REVOKED);
 
     // Create revocation record
     const revocationRecord: RevocationRecord = {
@@ -172,7 +173,7 @@ export class RevocationService {
       revokedBy: adminId,
       revokedAt: new Date().toISOString(),
       reason: options.reason,
-      previousState: 'PUBLISHED',
+      previousState: POST_STATES.PUBLISHED,
     };
 
     // Store revocation record
@@ -415,21 +416,6 @@ export class RevocationService {
    */
   async getDocumentedRevocations(): Promise<RevocationRecord[]> {
     return Array.from(this.revocationRecords.values()).filter((r) => r.reason);
-  }
-
-  /**
-   * Determine if user is an Admin.
-   *
-   * **Implementation:**
-   * - MVP: Check against hardcoded ADMIN_USERS list
-   * - Production: Would use role-based access control via Azure Entra
-   *
-   * @private
-   * @param userId - User ID to check
-   * @returns true if user is an Admin, false otherwise
-   */
-  private isAdmin(userId: string): boolean {
-    return this.ADMIN_USERS.includes(userId);
   }
 
   /**

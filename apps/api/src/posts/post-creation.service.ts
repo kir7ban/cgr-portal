@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PostService, PostDocument, CreatePostDto } from './post.service';
 import { DatabaseService } from '../database/database.service';
+import { AuthorizationService } from '../auth/authorization.service';
 
 const VALID_AUDIENCE_SCOPES = ['org-wide', 'dept-only'];
 const COMMS_OFFICER_ROLE = 'COMMS_OFFICER';
@@ -13,12 +14,11 @@ export class PostCreationService {
   constructor(
     private postService: PostService,
     private databaseService: DatabaseService,
+    private authorizationService: AuthorizationService,
   ) {}
 
   async createDraft(dto: CreatePostDto): Promise<PostDocument> {
-    if (!this.isCommsOfficer(dto.createdBy)) {
-      throw new ForbiddenException('Only Comms Officers can create posts');
-    }
+    this.authorizationService.enforceRole(dto.createdBy, 'COMMS_OFFICER', 'Only Comms Officers can create posts');
 
     const post = await this.postService.createDraft(dto);
 
@@ -114,11 +114,6 @@ export class PostCreationService {
     }
 
     userDrafts.delete(postId);
-  }
-
-  private isCommsOfficer(userId: string): boolean {
-    const commsOfficers = ['alice.smith'];
-    return commsOfficers.includes(userId);
   }
 
   private validateAudienceScope(scope: string): void {

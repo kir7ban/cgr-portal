@@ -2,18 +2,21 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { AudienceService } from './audience.service';
 import { DatabaseService } from '../database/database.service';
+import { AuthorizationService } from '../auth/authorization.service';
 
 describe('AudienceService', () => {
   let service: AudienceService;
   let databaseService: DatabaseService;
+  let authorizationService: AuthorizationService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AudienceService, DatabaseService],
+      providers: [AudienceService, DatabaseService, AuthorizationService],
     }).compile();
 
     service = module.get<AudienceService>(AudienceService);
     databaseService = module.get<DatabaseService>(DatabaseService);
+    authorizationService = module.get<AuthorizationService>(AuthorizationService);
     await databaseService.connect();
   });
 

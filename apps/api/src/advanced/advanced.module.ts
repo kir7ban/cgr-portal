@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../database/database.module';
 import { PostModule } from '../posts/post.module';
 import { FeedModule } from '../feed/feed.module';
+import { AuthModule } from '../auth/auth.module';
 import { EditService } from './edit.service';
 import { RevocationService } from './revoke.service';
 import { ArchiveService } from './archive.service';
@@ -14,7 +15,7 @@ import { AuditController } from './audit.controller';
 import { AnalyticsController } from './analytics.controller';
 
 @Module({
-  imports: [DatabaseModule, PostModule, FeedModule],
+  imports: [DatabaseModule, PostModule, FeedModule, AuthModule],
   providers: [EditService, RevocationService, ArchiveService, AuditTrailService, AnalyticsService],
   controllers: [EditController, RevokeController, ArchiveController, AuditController, AnalyticsController],
   exports: [EditService, RevocationService, ArchiveService, AuditTrailService, AnalyticsService],

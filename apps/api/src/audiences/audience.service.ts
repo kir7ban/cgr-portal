@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
+import { AuthorizationService } from '../auth/authorization.service';
 
 export interface CreateAudienceDto {
   name: string;
@@ -22,11 +23,14 @@ export interface AudienceDocument {
 export class AudienceService {
   private audiences: Map<string, AudienceDocument> = new Map();
 
-  constructor(private databaseService: DatabaseService) {}
+  constructor(
+    private databaseService: DatabaseService,
+    private authorizationService: AuthorizationService,
+  ) {}
 
   // CRUD Operations - Admin Only
   async createAudience(dto: CreateAudienceDto, userId: string): Promise<AudienceDocument> {
-    this.validateAdmin(userId);
+    this.authorizationService.enforceRole(userId, 'ADMIN', 'Only Admins can manage audiences');
     this.validateAudienceInput(dto);
 
     const audience: AudienceDocument = {
@@ -57,7 +61,7 @@ export class AudienceService {
     updates: Partial<CreateAudienceDto>,
     userId: string,
   ): Promise<AudienceDocument> {
-    this.validateAdmin(userId);
+    this.authorizationService.enforceRole(userId, 'ADMIN', 'Only Admins can manage audiences');
 
     const audience = this.audiences.get(audienceId);
     if (!audience) {
@@ -77,7 +81,7 @@ export class AudienceService {
   }
 
   async deleteAudience(audienceId: string, userId: string): Promise<void> {
-    this.validateAdmin(userId);
+    this.authorizationService.enforceRole(userId, 'ADMIN', 'Only Admins can manage audiences');
 
     if (!this.audiences.has(audienceId)) {
       throw new BadRequestException('Audience not found');
@@ -92,7 +96,7 @@ export class AudienceService {
     memberId: string,
     userId: string,
   ): Promise<AudienceDocument> {
-    this.validateAdmin(userId);
+    this.authorizationService.enforceRole(userId, 'ADMIN', 'Only Admins can manage audiences');
 
     const audience = this.audiences.get(audienceId);
     if (!audience) {
@@ -113,7 +117,7 @@ export class AudienceService {
     memberId: string,
     userId: string,
   ): Promise<AudienceDocument> {
-    this.validateAdmin(userId);
+    this.authorizationService.enforceRole(userId, 'ADMIN', 'Only Admins can manage audiences');
 
     const audience = this.audiences.get(audienceId);
     if (!audience) {
@@ -137,7 +141,7 @@ export class AudienceService {
     memberIds: string[],
     userId: string,
   ): Promise<AudienceDocument> {
-    this.validateAdmin(userId);
+    this.authorizationService.enforceRole(userId, 'ADMIN', 'Only Admins can manage audiences');
 
     const audience = this.audiences.get(audienceId);
     if (!audience) {
@@ -191,7 +195,7 @@ export class AudienceService {
     departmentIds: string[],
     userId: string,
   ): Promise<AudienceDocument> {
-    this.validateAdmin(userId);
+    this.authorizationService.enforceRole(userId, 'ADMIN', 'Only Admins can manage audiences');
 
     if (!departmentIds || departmentIds.length === 0) {
       throw new BadRequestException('At least one department is required');
@@ -216,12 +220,6 @@ export class AudienceService {
   }
 
   // Validation helpers
-  private validateAdmin(userId: string): void {
-    if (!userId || !userId.includes('admin')) {
-      throw new ForbiddenException('Only Admins can manage audiences');
-    }
-  }
-
   private validateAudienceInput(dto: CreateAudienceDto): void {
     if (!dto.name || dto.name.trim().length === 0) {
       throw new BadRequestException('Audience name is required');

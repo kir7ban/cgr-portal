@@ -2,16 +2,22 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ApprovalService, Submission } from './approval.service';
 import { PostService } from '../posts/post.service';
 import { DatabaseService } from '../database/database.service';
+import { AuditingService } from '../database/auditing.service';
+import { AuthorizationService } from '../auth/authorization.service';
 
 describe('ApprovalService (Issues #5-7)', () => {
   let service: ApprovalService;
   let postService: PostService;
   let databaseService: DatabaseService;
+  let auditingService: AuditingService;
+  let authorizationService: AuthorizationService;
 
   beforeEach(() => {
     databaseService = new DatabaseService();
+    auditingService = new AuditingService(databaseService);
+    authorizationService = new AuthorizationService();
     postService = new PostService(databaseService);
-    service = new ApprovalService(postService, databaseService);
+    service = new ApprovalService(postService, databaseService, auditingService, authorizationService);
   });
 
   describe('Issue #5: Approval Actions', () => {
