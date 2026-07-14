@@ -1,5 +1,6 @@
 import { Injectable, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { DatabaseService, AuditEntry } from '../database/database.service';
+import { AuditingService } from '../database/auditing.service';
 
 /**
  * Audit trail filter options
@@ -54,7 +55,10 @@ export interface PaginatedAuditResponse {
 export class AuditTrailService {
   private auditEntries: AuditEntry[] = [];
 
-  constructor(private databaseService: DatabaseService) {}
+  constructor(
+    private databaseService: DatabaseService,
+    private auditingService: AuditingService,
+  ) {}
 
   /**
    * Retrieve audit trail entries with optional filters and pagination.
@@ -259,9 +263,11 @@ export class AuditTrailService {
    *
    * Note: This method is for internal use by other services to log actions.
    * Public API access to audit trail is read-only via getAuditTrail().
+   * Prefer using AuditingService.logAction() instead of this method.
    *
    * @param entry - Audit entry to add
    * @returns The added entry
+   * @deprecated Use AuditingService.logAction() instead for simplified audit logging
    */
   async addAuditEntry(entry: AuditEntry): Promise<AuditEntry> {
     await this.databaseService.insertAudit(entry);

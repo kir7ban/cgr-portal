@@ -1,6 +1,8 @@
 import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PostService, PostDocument } from '../posts/post.service';
-import { DatabaseService, AuditEntry } from '../database/database.service';
+import { DatabaseService } from '../database/database.service';
+import { AuditingService } from '../database/auditing.service';
+import { AuthorizationService } from '../auth/authorization.service';
 
 /**
  * DTO for revoking a post with optional reason
@@ -73,12 +75,11 @@ export class RevocationService {
   private revocationRecords: Map<string, RevocationRecord> = new Map();
   private postRevocations: Map<string, RevocationRecord[]> = new Map();
 
-  // Admin user list - in production, would use role-based access control
-  private readonly ADMIN_USERS = ['bob.admin', 'admin.user', 'system.admin'];
-
   constructor(
     private postService: PostService,
     private databaseService: DatabaseService,
+    private auditingService: AuditingService,
+    private authorizationService: AuthorizationService,
   ) {}
 
   /**
@@ -141,9 +142,7 @@ export class RevocationService {
     options: RevokePostDto = {},
   ): Promise<RevokePostResponse> {
     // Validate authorization
-    if (!this.isAdmin(adminId)) {
-      throw new ForbiddenException('Only Admins can revoke posts');
-    }
+    this.authorizationService.enforceRole(adminId, 'ADMIN', 'Only Admins can revoke posts');
 
     // Validate reason length if provided
     if (options.reason && options.reason.length > 500) {
@@ -186,28 +185,22 @@ export class RevocationService {
     this.postRevocations.get(postId)!.push(revocationRecord);
 
     // Create immutable audit trail entry
-    const auditEntry: AuditEntry = {
-      id: `audit-revoke-${postId}-${Date.now()}`,
-      timestamp: revocationRecord.revokedAt,
+    await this.auditingService.logAction({
       actor: adminId,
       action: 'revoke_post',
       resource: 'post',
       resourceId: postId,
-    };
+    });
 
     // If reason is provided, include it in a second audit entry for detailed governance
     if (options.reason) {
-      await this.databaseService.insertAudit({
-        id: `audit-revoke-reason-${postId}-${Date.now()}`,
-        timestamp: revocationRecord.revokedAt,
+      await this.auditingService.logAction({
         actor: adminId,
         action: 'revoke_post_with_reason',
         resource: 'revocation_reason',
         resourceId: postId,
       });
     }
-
-    await this.databaseService.insertAudit(auditEntry);
 
     return {
       postId,

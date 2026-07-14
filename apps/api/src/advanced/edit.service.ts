@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PostService, PostDocument } from '../posts/post.service';
-import { DatabaseService, AuditEntry } from '../database/database.service';
+import { DatabaseService } from '../database/database.service';
+import { AuditingService } from '../database/auditing.service';
 import { ApprovalService, Submission } from '../approval/approval.service';
 
 /**
@@ -40,6 +41,7 @@ export class EditService {
   constructor(
     private postService: PostService,
     private databaseService: DatabaseService,
+    private auditingService: AuditingService,
     private approvalService: ApprovalService,
   ) {}
 
@@ -122,9 +124,7 @@ export class EditService {
     this.revisionCount.set(postId, revision.revisionNumber);
 
     // Log comprehensive audit trail entry
-    await this.databaseService.insertAudit({
-      id: `audit-edit-${postId}-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+    await this.auditingService.logAction({
       actor: userId,
       action: 'edit_published_post',
       resource: 'post',
@@ -132,9 +132,7 @@ export class EditService {
     });
 
     // Log the revision history entry in audit
-    await this.databaseService.insertAudit({
-      id: `audit-revision-${revision.id}`,
-      timestamp: revision.editedAt,
+    await this.auditingService.logAction({
       actor: userId,
       action: 'create_revision',
       resource: 'revision',

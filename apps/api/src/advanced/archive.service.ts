@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DatabaseService, Post, AuditEntry } from '../database/database.service';
+import { DatabaseService, Post } from '../database/database.service';
+import { AuditingService } from '../database/auditing.service';
 
 /**
  * Batch job result from archiving operation
@@ -44,7 +45,10 @@ export class ArchiveService {
   private archiveTimestamps: Map<string, string> = new Map();
   private batchHistory: Map<string, ArchiveBatchResult> = new Map();
 
-  constructor(private databaseService: DatabaseService) {}
+  constructor(
+    private databaseService: DatabaseService,
+    private auditingService: AuditingService,
+  ) {}
 
   /**
    * Archive posts older than specified days (default 365 = 1 year)
@@ -107,9 +111,7 @@ export class ArchiveService {
           postIds.push(post.id);
 
           // Log audit entry
-          await this.databaseService.insertAudit({
-            id: `audit-archive-${post.id}-${Date.now()}`,
-            timestamp: new Date().toISOString(),
+          await this.auditingService.logAction({
             actor: 'system',
             action: 'archive_post',
             resource: 'post',
@@ -300,9 +302,7 @@ export class ArchiveService {
     this.archiveTimestamps.delete(postId);
 
     // Log audit entry
-    await this.databaseService.insertAudit({
-      id: `audit-restore-${postId}-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+    await this.auditingService.logAction({
       actor: userId,
       action: 'restore_post',
       resource: 'post',

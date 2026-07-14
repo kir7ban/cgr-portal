@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { DatabaseService, AuditEntry } from '../database/database.service';
+import { DatabaseService } from '../database/database.service';
+import { AuditingService } from '../database/auditing.service';
 
 /**
  * Comment document interface
@@ -56,7 +57,10 @@ export class CommentService {
   private comments: Map<string, Comment> = new Map();
   private commentsByPost: Map<string, Set<string>> = new Map();
 
-  constructor(private databaseService: DatabaseService) {}
+  constructor(
+    private databaseService: DatabaseService,
+    private auditingService: AuditingService,
+  ) {}
 
   /**
    * Add a comment to a post
@@ -119,17 +123,13 @@ export class CommentService {
     this.commentsByPost.get(postId)!.add(commentId);
 
     // Log to audit trail
-    const auditEntry: AuditEntry = {
-      id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: createdAt,
-      actor: userId.trim(),
-      action: 'COMMENT_ADDED',
-      resource: 'comment',
-      resourceId: commentId,
-    };
-
     try {
-      await this.databaseService.insertAudit(auditEntry);
+      await this.auditingService.logAction({
+        actor: userId.trim(),
+        action: 'COMMENT_ADDED',
+        resource: 'comment',
+        resourceId: commentId,
+      });
     } catch (error) {
       // Silently fail audit if database is not connected (for testing)
     }
@@ -265,17 +265,13 @@ export class CommentService {
     }
 
     // Log to audit trail
-    const auditEntry: AuditEntry = {
-      id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date().toISOString(),
-      actor: userId.trim(),
-      action: 'COMMENT_DELETED',
-      resource: 'comment',
-      resourceId: commentId,
-    };
-
     try {
-      await this.databaseService.insertAudit(auditEntry);
+      await this.auditingService.logAction({
+        actor: userId.trim(),
+        action: 'COMMENT_DELETED',
+        resource: 'comment',
+        resourceId: commentId,
+      });
     } catch (error) {
       // Silently fail audit if database is not connected (for testing)
     }

@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { DatabaseService, AuditEntry } from '../database/database.service';
+import { DatabaseService } from '../database/database.service';
+import { AuditingService } from '../database/auditing.service';
 
 export interface Reaction {
   id: string;
@@ -20,7 +21,10 @@ export class ReactionService {
   private reactions: Map<string, Reaction> = new Map();
   private reactionsByPost: Map<string, Set<string>> = new Map();
 
-  constructor(private databaseService: DatabaseService) {}
+  constructor(
+    private databaseService: DatabaseService,
+    private auditingService: AuditingService,
+  ) {}
 
   /**
    * Add a reaction to a post
@@ -57,17 +61,13 @@ export class ReactionService {
     this.reactionsByPost.get(postId)!.add(reactionId);
 
     // Log to audit trail
-    const auditEntry: AuditEntry = {
-      id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: createdAt,
-      actor: userId,
-      action: 'REACTION_ADDED',
-      resource: 'reaction',
-      resourceId: reactionId,
-    };
-
     try {
-      await this.databaseService.insertAudit(auditEntry);
+      await this.auditingService.logAction({
+        actor: userId,
+        action: 'REACTION_ADDED',
+        resource: 'reaction',
+        resourceId: reactionId,
+      });
     } catch (error) {
       // Silently fail audit if database is not connected (for testing)
     }
@@ -102,17 +102,13 @@ export class ReactionService {
     }
 
     // Log to audit trail
-    const auditEntry: AuditEntry = {
-      id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date().toISOString(),
-      actor: userId,
-      action: 'REACTION_REMOVED',
-      resource: 'reaction',
-      resourceId: reactionId,
-    };
-
     try {
-      await this.databaseService.insertAudit(auditEntry);
+      await this.auditingService.logAction({
+        actor: userId,
+        action: 'REACTION_REMOVED',
+        resource: 'reaction',
+        resourceId: reactionId,
+      });
     } catch (error) {
       // Silently fail audit if database is not connected (for testing)
     }

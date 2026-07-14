@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { DatabaseService, AuditEntry } from '../database/database.service';
+import { DatabaseService } from '../database/database.service';
+import { AuditingService } from '../database/auditing.service';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -47,7 +48,10 @@ export class ShareService {
   private sharesByPost: Map<string, string[]> = new Map();
   private sharesByUser: Map<string, string[]> = new Map();
 
-  constructor(private databaseService: DatabaseService) {}
+  constructor(
+    private databaseService: DatabaseService,
+    private auditingService: AuditingService,
+  ) {}
 
   /**
    * Share a post with one or more recipients
@@ -127,16 +131,12 @@ export class ShareService {
     this.sharesByUser.get(userId)!.push(share.id);
 
     // Log to audit trail (immutable)
-    const auditEntry: AuditEntry = {
-      id: `audit-share-${share.id}`,
-      timestamp: share.sharedAt,
+    await this.auditingService.logAction({
       actor: userId,
       action: 'share_post',
       resource: 'post',
       resourceId: postId,
-    };
-
-    await this.databaseService.insertAudit(auditEntry);
+    });
 
     return share;
   }

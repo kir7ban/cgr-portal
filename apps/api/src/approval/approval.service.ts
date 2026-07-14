@@ -1,13 +1,16 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PostService, PostDocument } from '../posts/post.service';
-import { DatabaseService, AuditEntry } from '../database/database.service';
+import { DatabaseService } from '../database/database.service';
+import { AuditingService } from '../database/auditing.service';
+import { AuthorizationService } from '../auth/authorization.service';
+import { POST_STATES } from '../domain/state-types';
 
 export interface Submission {
   id: string;
   postId: string;
   createdBy: string;
   submittedAt: string;
-  state: 'PENDING' | 'APPROVED' | 'REJECTED' | 'FEEDBACK' | 'PENDING_REVIEW';
+  state: 'PENDING' | 'APPROVED' | POST_STATES.REJECTED | 'FEEDBACK' | 'PENDING_REVIEW';
   proposedAudience?: string;
   finalAudience?: string;
   reviewedBy?: string;
@@ -46,6 +49,8 @@ export class ApprovalService {
   constructor(
     private postService: PostService,
     private databaseService: DatabaseService,
+    private auditingService: AuditingService,
+    private authorizationService: AuthorizationService,
   ) {}
 
   /**
@@ -56,14 +61,14 @@ export class ApprovalService {
    * @returns Updated submission
    */
   async approve(submissionId: string, adminId: string, dto: ApprovalDto): Promise<Submission> {
-    this.validateAdminRole(adminId);
+    this.authorizationService.enforceRole(adminId, 'ADMIN', 'Only Admins can perform approval actions');
 
     const submission = this.submissions.get(submissionId);
     if (!submission) {
       throw new BadRequestException('Submission not found');
     }
 
-    if (submission.state === 'APPROVED' || submission.state === 'PUBLISHED') {
+    if (submission.state === 'APPROVED' || submission.state === POST_STATES.PUBLISHED) {
       throw new BadRequestException('Submission already approved');
     }
 
@@ -84,14 +89,12 @@ export class ApprovalService {
     submission.pendingReviewAt = undefined;
 
     // Publish the post
-    const post = await this.postService.updatePostState(submission.postId, 'PUBLISHED');
+    const post = await this.postService.updatePostState(submission.postId, POST_STATES.PUBLISHED);
 
     this.submissions.set(submissionId, submission);
 
     const auditAction = wasRejected && submission.overriddenBy ? 'approve_with_override' : 'approve_post';
-    await this.databaseService.insertAudit({
-      id: `audit-approval-${submissionId}-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+    await this.auditingService.logAction({
       actor: adminId,
       action: auditAction,
       resource: 'submission',
@@ -109,14 +112,14 @@ export class ApprovalService {
    * @returns Updated submission
    */
   async reject(submissionId: string, adminId: string, dto: RejectDto): Promise<Submission> {
-    this.validateAdminRole(adminId);
+    this.authorizationService.enforceRole(adminId, 'ADMIN', 'Only Admins can perform approval actions');
 
     const submission = this.submissions.get(submissionId);
     if (!submission) {
       throw new BadRequestException('Submission not found');
     }
 
-    if (submission.state === 'REJECTED') {
+    if (submission.state === POST_STATES.REJECTED) {
       throw new BadRequestException('Submission already rejected');
     }
 
@@ -124,7 +127,7 @@ export class ApprovalService {
       throw new BadRequestException('Can only reject submissions in PENDING or PENDING_REVIEW state');
     }
 
-    submission.state = 'REJECTED';
+    submission.state = POST_STATES.REJECTED;
     submission.reviewedBy = adminId;
     submission.reviewedAt = new Date().toISOString();
     submission.rejectionReason = dto.reason;
@@ -132,14 +135,12 @@ export class ApprovalService {
     submission.pendingReviewAt = undefined;
 
     // Mark post as rejected (cannot be resubmitted)
-    await this.postService.updatePostState(submission.postId, 'REJECTED');
+    await this.postService.updatePostState(submission.postId, POST_STATES.REJECTED);
     this.rejectedPosts.add(submission.postId);
 
     this.submissions.set(submissionId, submission);
 
-    await this.databaseService.insertAudit({
-      id: `audit-rejection-${submissionId}-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+    await this.auditingService.logAction({
       actor: adminId,
       action: 'reject_post',
       resource: 'submission',
@@ -157,7 +158,7 @@ export class ApprovalService {
    * @returns Updated submission
    */
   async sendFeedback(submissionId: string, adminId: string, dto: FeedbackDto): Promise<Submission> {
-    this.validateAdminRole(adminId);
+    this.authorizationService.enforceRole(adminId, 'ADMIN', 'Only Admins can perform approval actions');
 
     const submission = this.submissions.get(submissionId);
     if (!submission) {
@@ -180,13 +181,11 @@ export class ApprovalService {
     submission.pendingReviewAt = undefined;
 
     // Return post to draft state for revision
-    await this.postService.updatePostState(submission.postId, 'DRAFT');
+    await this.postService.updatePostState(submission.postId, POST_STATES.DRAFT);
 
     this.submissions.set(submissionId, submission);
 
-    await this.databaseService.insertAudit({
-      id: `audit-feedback-${submissionId}-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+    await this.auditingService.logAction({
       actor: adminId,
       action: 'send_feedback',
       resource: 'submission',
@@ -205,14 +204,14 @@ export class ApprovalService {
    * @returns Updated submission
    */
   async override(submissionId: string, adminId: string, dto: OverrideDto): Promise<Submission> {
-    this.validateAdminRole(adminId);
+    this.authorizationService.enforceRole(adminId, 'ADMIN', 'Only Admins can perform approval actions');
 
     const submission = this.submissions.get(submissionId);
     if (!submission) {
       throw new BadRequestException('Submission not found');
     }
 
-    if (submission.state !== 'REJECTED' && submission.state !== 'FEEDBACK') {
+    if (submission.state !== POST_STATES.REJECTED && submission.state !== 'FEEDBACK') {
       throw new BadRequestException(
         'Can only override submissions in REJECTED or FEEDBACK state',
       );
@@ -230,13 +229,11 @@ export class ApprovalService {
     submission.reviewedAt = new Date().toISOString();
 
     // Publish the post
-    await this.postService.updatePostState(submission.postId, 'PUBLISHED');
+    await this.postService.updatePostState(submission.postId, POST_STATES.PUBLISHED);
 
     this.submissions.set(submissionId, submission);
 
-    await this.databaseService.insertAudit({
-      id: `audit-override-${submissionId}-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+    await this.auditingService.logAction({
       actor: adminId,
       action: 'override_decision',
       resource: 'submission',
@@ -254,7 +251,7 @@ export class ApprovalService {
    * @returns Updated submission
    */
   async markPendingReview(submissionId: string, adminId: string): Promise<Submission> {
-    this.validateAdminRole(adminId);
+    this.authorizationService.enforceRole(adminId, 'ADMIN', 'Only Admins can perform approval actions');
 
     const submission = this.submissions.get(submissionId);
     if (!submission) {
@@ -271,9 +268,7 @@ export class ApprovalService {
 
     this.submissions.set(submissionId, submission);
 
-    await this.databaseService.insertAudit({
-      id: `audit-pending-review-${submissionId}-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+    await this.auditingService.logAction({
       actor: adminId,
       action: 'mark_pending_review',
       resource: 'submission',
@@ -360,12 +355,5 @@ export class ApprovalService {
    */
   async getPendingReviewSubmissions(): Promise<Submission[]> {
     return Array.from(this.submissions.values()).filter((sub) => sub.state === 'PENDING_REVIEW');
-  }
-
-  private validateAdminRole(userId: string): void {
-    const admins = ['admin'];
-    if (!admins.includes(userId)) {
-      throw new ForbiddenException('Only Admins can perform approval actions');
-    }
   }
 }
