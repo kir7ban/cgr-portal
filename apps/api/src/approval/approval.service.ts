@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { PostService, PostDocument } from '../posts/post.service';
 import { DatabaseService } from '../database/database.service';
 import { AuditingService } from '../database/auditing.service';
@@ -42,6 +42,7 @@ export interface OverrideDto {
 
 @Injectable()
 export class ApprovalService {
+  private readonly logger = new Logger(ApprovalService.name);
   private submissions: Map<string, Submission> = new Map();
   private submissionsByPost: Map<string, string[]> = new Map();
   private rejectedPosts: Set<string> = new Set();
@@ -101,6 +102,8 @@ export class ApprovalService {
       resourceId: submissionId,
     });
 
+    this.logger.log(`Submission ${submissionId} approved by admin ${adminId}`);
+
     return submission;
   }
 
@@ -146,6 +149,8 @@ export class ApprovalService {
       resource: 'submission',
       resourceId: submissionId,
     });
+
+    this.logger.log(`Submission ${submissionId} rejected by admin ${adminId}`);
 
     return submission;
   }

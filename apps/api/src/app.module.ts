@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
+import { DomainModule } from './domain/domain.module';
 import { PostModule } from './posts/post.module';
 import { ApprovalModule } from './approval/approval.module';
 import { FeedModule } from './feed/feed.module';
@@ -13,6 +14,7 @@ import { HealthModule } from './health/health.module';
   imports: [
     AuthModule,
     DatabaseModule,
+    DomainModule,
     PostModule,
     ApprovalModule,
     FeedModule,

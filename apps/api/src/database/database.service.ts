@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { PostState } from '../domain/state-types';
 
 export interface AuditEntry {
   id: string;
@@ -14,7 +15,7 @@ export interface Post {
   title: string;
   content: string;
   createdBy: string;
-  state: 'DRAFT' | 'SUBMITTED' | 'PUBLISHED' | 'REJECTED' | 'REVOKED' | 'ARCHIVED';
+  state: PostState;
   createdAt: string;
 }
 

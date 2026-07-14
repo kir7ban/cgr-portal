@@ -3,6 +3,7 @@ import { PostService, PostDocument } from '../posts/post.service';
 import { ReactionService } from '../engagement/reaction.service';
 import { CommentService } from '../engagement/comment.service';
 import { ShareService } from '../engagement/share.service';
+import { POST_STATES } from '../domain/state-types';
 
 /**
  * Daily engagement metrics for a single post
@@ -127,7 +128,7 @@ export class AnalyticsService {
     let totalComments = 0;
     let totalShares = 0;
 
-    for (const post of postsForDate.filter((p) => p.state === 'PUBLISHED')) {
+    for (const post of postsForDate.filter((p) => p.state === POST_STATES.PUBLISHED)) {
       const metrics = await this.calculatePostEngagementMetrics(post, date);
       postMetrics.push(metrics);
 
@@ -318,7 +319,7 @@ export class AnalyticsService {
   ): DailyMetrics['submissions'] {
     const submitted = posts.filter((p) => p.state === 'SUBMITTED').length;
     const approved = posts.filter(
-      (p) => p.state === 'PUBLISHED' || p.state === 'ARCHIVED',
+      (p) => p.state === POST_STATES.PUBLISHED || p.state === POST_STATES.ARCHIVED,
     ).length;
     const rejected = posts.filter((p) => p.state === 'REJECTED').length;
     const pendingReview = 0; // Would be calculated from approval service in real implementation

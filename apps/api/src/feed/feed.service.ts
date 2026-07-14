@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { DatabaseService, Post } from '../database/database.service';
+import { POST_STATES } from '../domain/state-types';
 
 /**
  * Audience scope types for post visibility
@@ -99,7 +100,7 @@ export class FeedService {
 
     // Step 1: Filter by state (PUBLISHED, optionally include DRAFT)
     let filteredPosts = allPosts.filter((post) => {
-      if (post.state === 'PUBLISHED') return true;
+      if (post.state === POST_STATES.PUBLISHED) return true;
       if (includeDrafts && post.state === 'DRAFT' && post.createdBy === userId) return true;
       return false;
     });
@@ -151,7 +152,7 @@ export class FeedService {
    * @throws BadRequestException if post is not in PUBLISHED state
    */
   async addPublishedPost(post: PublishedPost): Promise<PublishedPost> {
-    if (post.state !== 'PUBLISHED') {
+    if (post.state !== POST_STATES.PUBLISHED) {
       throw new BadRequestException('Only PUBLISHED posts can be added to feed');
     }
 
@@ -187,7 +188,7 @@ export class FeedService {
   ): Promise<PublishedPost | undefined> {
     const post = this.publishedPosts.get(postId);
 
-    if (!post || post.state !== 'PUBLISHED') {
+    if (!post || post.state !== POST_STATES.PUBLISHED) {
       return undefined;
     }
 
@@ -260,7 +261,7 @@ export class FeedService {
   }> {
     const posts = Array.from(this.publishedPosts.values());
     return {
-      totalPublished: posts.filter((p) => p.state === 'PUBLISHED').length,
+      totalPublished: posts.filter((p) => p.state === POST_STATES.PUBLISHED).length,
       totalArchived: posts.filter((p) => p.state === 'ARCHIVED').length,
       totalDrafts: posts.filter((p) => p.state === 'DRAFT').length,
     };

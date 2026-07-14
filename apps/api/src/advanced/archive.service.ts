@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService, Post } from '../database/database.service';
 import { AuditingService } from '../database/auditing.service';
+import { POST_STATES } from '../domain/state-types';
 
 /**
  * Batch job result from archiving operation
@@ -87,7 +88,7 @@ export class ArchiveService {
           const createdDate = new Date(post.createdAt);
           return (
             createdDate < cutoffDate &&
-            post.state === 'PUBLISHED' &&
+            post.state === POST_STATES.PUBLISHED &&
             !this.archivedPosts.has(post.id)
           );
         })
@@ -102,7 +103,7 @@ export class ArchiveService {
         try {
           // Update post state to ARCHIVED
           const archivedPost = await this.databaseService.updatePost(post.id, {
-            state: 'ARCHIVED',
+            state: POST_STATES.ARCHIVED,
           });
 
           // Store in archive tracking
@@ -294,7 +295,7 @@ export class ArchiveService {
 
     // Update state back to PUBLISHED
     const restoredPost = await this.databaseService.updatePost(postId, {
-      state: 'PUBLISHED',
+      state: POST_STATES.PUBLISHED,
     });
 
     // Remove from archive tracking

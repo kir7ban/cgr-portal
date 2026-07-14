@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { AuditingService } from '../database/auditing.service';
 
@@ -18,6 +18,7 @@ export interface ReactionCount {
 
 @Injectable()
 export class ReactionService {
+  private readonly logger = new Logger(ReactionService.name);
   private reactions: Map<string, Reaction> = new Map();
   private reactionsByPost: Map<string, Set<string>> = new Map();
 
@@ -71,6 +72,8 @@ export class ReactionService {
     } catch (error) {
       // Silently fail audit if database is not connected (for testing)
     }
+
+    this.logger.log(`Reaction ${emoji} added to post ${postId} by user ${userId}`);
 
     return reaction;
   }

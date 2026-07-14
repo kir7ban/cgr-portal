@@ -1,8 +1,10 @@
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { PostService, PostDocument } from '../posts/post.service';
 import { DatabaseService } from '../database/database.service';
 import { AuditingService } from '../database/auditing.service';
 import { ApprovalService, Submission } from '../approval/approval.service';
+import { POST_STATES } from '../domain/state-types';
+import { ValidationService } from '../common/validation.service';
 
 /**
  * Edit history entry tracking changes to a published post
@@ -35,6 +37,7 @@ export interface EditPublishedPostDto {
 
 @Injectable()
 export class EditService {
+  private readonly logger = new Logger(EditService.name);
   private revisionHistories: Map<string, RevisionHistory[]> = new Map();
   private revisionCount: Map<string, number> = new Map();
 
@@ -43,6 +46,7 @@ export class EditService {
     private databaseService: DatabaseService,
     private auditingService: AuditingService,
     private approvalService: ApprovalService,
+    private validationService: ValidationService,
   ) {}
 
   /**
@@ -77,7 +81,7 @@ export class EditService {
     }
 
     // Only PUBLISHED posts can be edited
-    if (post.state !== 'PUBLISHED') {
+    if (post.state !== POST_STATES.PUBLISHED) {
       throw new BadRequestException('Only published posts can be edited. Draft posts use PATCH /api/posts/{id}');
     }
 
@@ -99,7 +103,7 @@ export class EditService {
     };
 
     // Update post to SUBMITTED state with new content
-    const updatedPost = await this.postService.updatePostState(postId, 'SUBMITTED');
+    const updatedPost = await this.postService.updatePostState(postId, POST_STATES.SUBMITTED);
 
     // Apply updates to post
     if (dto.title) updatedPost.title = dto.title;
@@ -138,6 +142,8 @@ export class EditService {
       resource: 'revision',
       resourceId: revision.id,
     });
+
+    this.logger.log(`Published post ${postId} edited by user ${userId}, created revision ${revision.id}`);
 
     return {
       post: updatedPost,
@@ -227,58 +233,11 @@ export class EditService {
       throw new BadRequestException('Title cannot be empty');
     }
 
-    // Images validation
-    const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-    const MAX_IMAGES_PER_POST = 3;
-
-    if (dto.images) {
-      if (dto.images.length > MAX_IMAGES_PER_POST) {
-        throw new BadRequestException('Maximum 3 images allowed per post');
-      }
-
-      for (const image of dto.images) {
-        if (!ALLOWED_IMAGE_TYPES.includes(image.type)) {
-          throw new BadRequestException('Invalid image type');
-        }
-
-        if (image.size > MAX_IMAGE_SIZE) {
-          throw new BadRequestException('Image size cannot exceed 5MB');
-        }
-      }
-    }
-
-    // Video validation
-    if (dto.video) {
-      if (dto.video.source === 'direct') {
-        throw new BadRequestException('Direct video uploads not allowed');
-      }
-
-      if (dto.video.source !== 'youtube' && dto.video.source !== 'internal') {
-        throw new BadRequestException('Video source must be youtube or internal');
-      }
-    }
-
-    // Documents validation
-    const ALLOWED_DOCUMENT_TYPES = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    ];
-    const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
-
-    if (dto.documents) {
-      for (const doc of dto.documents) {
-        if (!ALLOWED_DOCUMENT_TYPES.includes(doc.type)) {
-          throw new BadRequestException('Unsupported document type');
-        }
-
-        if (doc.size > MAX_DOCUMENT_SIZE) {
-          throw new BadRequestException('Document size cannot exceed 10MB');
-        }
-      }
-    }
+    // Use centralized validation service for media files
+    this.validationService.validateMediaFiles({
+      images: dto.images,
+      video: dto.video,
+      documents: dto.documents,
+    });
   }
 }

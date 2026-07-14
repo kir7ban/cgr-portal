@@ -1,6 +1,7 @@
-import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { AuditingService } from '../database/auditing.service';
+import { ValidationService } from '../common/validation.service';
 
 /**
  * Comment document interface
@@ -54,12 +55,14 @@ export interface PaginatedCommentsResponse {
  */
 @Injectable()
 export class CommentService {
+  private readonly logger = new Logger(CommentService.name);
   private comments: Map<string, Comment> = new Map();
   private commentsByPost: Map<string, Set<string>> = new Map();
 
   constructor(
     private databaseService: DatabaseService,
     private auditingService: AuditingService,
+    private validationService: ValidationService,
   ) {}
 
   /**
@@ -134,6 +137,8 @@ export class CommentService {
       // Silently fail audit if database is not connected (for testing)
     }
 
+    this.logger.log(`Comment ${commentId} added to post ${postId} by user ${userId}`);
+
     return comment;
   }
 
@@ -169,7 +174,7 @@ export class CommentService {
       throw new BadRequestException('postId is required and must be a non-empty string');
     }
 
-    this.validatePaginationParams(pagination);
+    this.validationService.validatePagination(pagination);
 
     const postCommentIds = this.commentsByPost.get(postId) || new Set();
     const allComments: Comment[] = [];
@@ -276,36 +281,9 @@ export class CommentService {
       // Silently fail audit if database is not connected (for testing)
     }
 
+    this.logger.log(`Comment ${commentId} deleted by user ${userId}`);
+
     return { deleted: true };
-  }
-
-  /**
-   * Validate pagination parameters
-   *
-   * @param pagination - Pagination params to validate
-   * @throws BadRequestException if params are invalid
-   *
-   * Rules:
-   * - pagination must be an object
-   * - page must be a positive integer >= 1
-   * - pageSize must be a positive integer (1-100)
-   */
-  private validatePaginationParams(pagination: PaginationParams): void {
-    if (!pagination || typeof pagination !== 'object') {
-      throw new BadRequestException('Pagination params required');
-    }
-
-    if (typeof pagination.page !== 'number' || pagination.page < 1) {
-      throw new BadRequestException('Page must be a positive integer');
-    }
-
-    if (typeof pagination.pageSize !== 'number' || pagination.pageSize < 1) {
-      throw new BadRequestException('PageSize must be a positive integer');
-    }
-
-    if (pagination.pageSize > 100) {
-      throw new BadRequestException('PageSize cannot exceed 100');
-    }
   }
 
   /**

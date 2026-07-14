@@ -1,5 +1,7 @@
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
+import { PostState, POST_STATES } from '../domain/state-types';
+import { ValidationService } from '../common/validation.service';
 
 export interface CreatePostDto {
   title: string;
@@ -15,7 +17,7 @@ export interface PostDocument {
   title: string;
   content: string;
   createdBy: string;
-  state: 'DRAFT' | 'SUBMITTED' | 'PUBLISHED' | 'REJECTED' | 'REVOKED' | 'ARCHIVED';
+  state: PostState;
   images?: Array<{ url: string; size: number; type: string }>;
   video?: { url: string; source: string };
   documents?: Array<{ url: string; name: string; size: number; type: string }>;
@@ -23,36 +25,30 @@ export interface PostDocument {
   createdAt: string;
 }
 
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-const ALLOWED_DOCUMENT_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-];
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
-const MAX_IMAGES_PER_POST = 3;
-
 @Injectable()
 export class PostService {
+  private readonly logger = new Logger(PostService.name);
   private posts: Map<string, PostDocument> = new Map();
 
-  constructor(private databaseService: DatabaseService) {}
+  constructor(
+    private databaseService: DatabaseService,
+    private validationService: ValidationService,
+  ) {}
 
   async createDraft(dto: CreatePostDto): Promise<PostDocument> {
     this.validateContent(dto.content);
-    this.validateImages(dto.images);
-    this.validateVideo(dto.video);
-    this.validateDocuments(dto.documents);
+    this.validationService.validateMediaFiles({
+      images: dto.images,
+      video: dto.video,
+      documents: dto.documents,
+    });
 
     const post: PostDocument = {
       id: this.generateId(),
       title: dto.title,
       content: dto.content,
       createdBy: dto.createdBy,
-      state: 'DRAFT',
+      state: POST_STATES.DRAFT,
       images: dto.images,
       video: dto.video,
       documents: dto.documents,
@@ -60,6 +56,7 @@ export class PostService {
     };
 
     this.posts.set(post.id, post);
+    this.logger.log(`Created draft post ${post.id} by user ${dto.createdBy}`);
     return post;
   }
 
@@ -68,11 +65,11 @@ export class PostService {
 
     if (!post) return undefined;
 
-    if (post.state === 'DRAFT' && post.createdBy !== userId) {
+    if (post.state === POST_STATES.DRAFT && post.createdBy !== userId) {
       return undefined;
     }
 
-    if (post.state === 'PUBLISHED') {
+    if (post.state === POST_STATES.PUBLISHED) {
       return post;
     }
 
@@ -98,78 +95,35 @@ export class PostService {
       throw new ForbiddenException('Only creator can submit');
     }
 
-    if (post.state !== 'DRAFT') {
+    if (post.state !== POST_STATES.DRAFT) {
       throw new BadRequestException('Can only submit DRAFT posts');
     }
 
-    post.state = 'SUBMITTED';
+    post.state = POST_STATES.SUBMITTED;
     post.proposedAudience = options.proposedAudience;
 
     this.posts.set(postId, post);
+    this.logger.log(`Post ${postId} submitted for approval by user ${userId}`);
     return post;
   }
 
-  async updatePostState(postId: string, newState: string): Promise<PostDocument> {
+  async updatePostState(postId: string, newState: PostState): Promise<PostDocument> {
     const post = this.posts.get(postId);
 
     if (!post) {
       throw new BadRequestException('Post not found');
     }
 
-    post.state = newState as any;
+    const previousState = post.state;
+    post.state = newState;
     this.posts.set(postId, post);
+    this.logger.log(`Post ${postId} state changed from ${previousState} to ${newState}`);
     return post;
   }
 
   private validateContent(content: string): void {
     if (!content || content.trim().length === 0) {
       throw new BadRequestException('Content cannot be empty');
-    }
-  }
-
-  private validateImages(images?: Array<{ url: string; size: number; type: string }>): void {
-    if (!images) return;
-
-    if (images.length > MAX_IMAGES_PER_POST) {
-      throw new BadRequestException('Maximum 3 images allowed per post');
-    }
-
-    for (const image of images) {
-      if (!ALLOWED_IMAGE_TYPES.includes(image.type)) {
-        throw new BadRequestException('Invalid image type');
-      }
-
-      if (image.size > MAX_IMAGE_SIZE) {
-        throw new BadRequestException('Image size cannot exceed 5MB');
-      }
-    }
-  }
-
-  private validateVideo(video?: { url: string; source: string }): void {
-    if (!video) return;
-
-    if (video.source === 'direct') {
-      throw new BadRequestException('Direct video uploads not allowed');
-    }
-
-    if (video.source !== 'youtube' && video.source !== 'internal') {
-      throw new BadRequestException('Video source must be youtube or internal');
-    }
-  }
-
-  private validateDocuments(
-    documents?: Array<{ url: string; name: string; size: number; type: string }>,
-  ): void {
-    if (!documents) return;
-
-    for (const doc of documents) {
-      if (!ALLOWED_DOCUMENT_TYPES.includes(doc.type)) {
-        throw new BadRequestException('Unsupported document type');
-      }
-
-      if (doc.size > MAX_DOCUMENT_SIZE) {
-        throw new BadRequestException('Document size cannot exceed 10MB');
-      }
     }
   }
 
