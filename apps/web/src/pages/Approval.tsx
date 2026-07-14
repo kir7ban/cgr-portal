@@ -1,28 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-
-interface Submission {
-  id: string;
-  postId: string;
-  createdBy: string;
-  submittedAt: string;
-  state: 'PENDING' | 'PENDING_REVIEW';
-  proposedAudience?: string;
-  pendingReviewBy?: string;
-  pendingReviewAt?: string;
-}
-
-interface ApprovalQueueResponse {
-  success: boolean;
-  data: Submission[];
-}
+import { useApprovalQueue } from '../hooks/useApprovalQueue';
+import { ApprovalDetail } from './ApprovalDetail';
 
 export function Approval() {
   const { currentUser } = useAuthContext();
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { submissions, isLoading, error, refresh } = useApprovalQueue();
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
 
   // Redirect non-admin users
@@ -30,39 +14,7 @@ export function Approval() {
     return <Navigate to="/feed" replace />;
   }
 
-  useEffect(() => {
-    fetchApprovalQueue();
-  }, []);
-
-  const fetchApprovalQueue = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/submissions/queue');
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        setError(errorData.error?.message || 'Failed to load approval queue');
-        return;
-      }
-
-      const data: ApprovalQueueResponse = await response.json();
-
-      // Sort by submission date (oldest first)
-      const sorted = [...data.data].sort(
-        (a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()
-      );
-
-      setSubmissions(sorted);
-    } catch (err) {
-      setError('Failed to load approval queue');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getStatusBadge = (submission: Submission) => {
+  const getStatusBadge = (submission: ReturnType<typeof useApprovalQueue>['submissions'][0]) => {
     if (submission.state === 'PENDING_REVIEW') {
       return (
         <span className="status-badge pending-review">
@@ -80,6 +32,21 @@ export function Approval() {
       day: '2-digit',
     });
   };
+
+  const handleDetailClose = async () => {
+    setSelectedSubmissionId(null);
+    // Refresh queue after detail view closes
+    await refresh();
+  };
+
+  if (selectedSubmissionId) {
+    return (
+      <ApprovalDetail
+        submissionId={selectedSubmissionId}
+        onClose={handleDetailClose}
+      />
+    );
+  }
 
   if (isLoading) {
     return <div className="approval-container">Loading...</div>;
