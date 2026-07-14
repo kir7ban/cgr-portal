@@ -13,10 +13,12 @@ import { RevokeController } from './revoke.controller';
 import { ArchiveController } from './archive.controller';
 import { AuditController } from './audit.controller';
 import { AnalyticsController } from './analytics.controller';
+import { ApprovalModule } from '../approval/approval.module';
+import { ValidationService } from '../common/validation.service';
 
 @Module({
-  imports: [DatabaseModule, PostModule, FeedModule, AuthModule],
-  providers: [EditService, RevocationService, ArchiveService, AuditTrailService, AnalyticsService],
+  imports: [DatabaseModule, PostModule, FeedModule, AuthModule, ApprovalModule],
+  providers: [EditService, RevocationService, ArchiveService, AuditTrailService, AnalyticsService, ValidationService],
   controllers: [EditController, RevokeController, ArchiveController, AuditController, AnalyticsController],
   exports: [EditService, RevocationService, ArchiveService, AuditTrailService, AnalyticsService],
 })

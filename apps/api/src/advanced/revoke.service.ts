@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
 import { PostService, PostDocument } from '../posts/post.service';
 import { DatabaseService } from '../database/database.service';
 import { AuditingService } from '../database/auditing.service';
@@ -73,6 +73,7 @@ export interface RevokePostResponse {
  */
 @Injectable()
 export class RevocationService {
+  private readonly logger = new Logger(RevocationService.name);
   private revocationRecords: Map<string, RevocationRecord> = new Map();
   private postRevocations: Map<string, RevocationRecord[]> = new Map();
 
@@ -202,6 +203,8 @@ export class RevocationService {
         resourceId: postId,
       });
     }
+
+    this.logger.log(`Post ${postId} revoked by admin ${adminId}${options.reason ? ` with reason: ${options.reason}` : ''}`);
 
     return {
       postId,

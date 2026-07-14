@@ -3,10 +3,11 @@ import { DatabaseModule } from '../database/database.module';
 import { AuthModule } from '../auth/auth.module';
 import { PostService } from './post.service';
 import { PostCreationService } from './post-creation.service';
+import { ValidationService } from '../common/validation.service';
 
 @Module({
   imports: [DatabaseModule, AuthModule],
-  providers: [PostService, PostCreationService],
+  providers: [PostService, PostCreationService, ValidationService],
   exports: [PostService, PostCreationService],
 })
 export class PostModule {}

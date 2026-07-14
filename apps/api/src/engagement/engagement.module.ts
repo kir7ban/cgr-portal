@@ -6,10 +6,11 @@ import { ShareService } from './share.service';
 import { ReactionController } from './reaction.controller';
 import { CommentController } from './comment.controller';
 import { ShareController } from './share.controller';
+import { ValidationService } from '../common/validation.service';
 
 @Module({
   imports: [DatabaseModule],
-  providers: [ReactionService, CommentService, ShareService],
+  providers: [ReactionService, CommentService, ShareService, ValidationService],
   controllers: [ReactionController, CommentController, ShareController],
   exports: [ReactionService, CommentService, ShareService],
 })

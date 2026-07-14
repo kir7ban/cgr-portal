@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { DatabaseService, Post } from '../database/database.service';
 import { POST_STATES } from '../domain/state-types';
 
@@ -64,6 +64,7 @@ export interface PaginatedFeedResponse {
  */
 @Injectable()
 export class FeedService {
+  private readonly logger = new Logger(FeedService.name);
   private publishedPosts: Map<string, PublishedPost> = new Map();
 
   constructor(private databaseService: DatabaseService) {}

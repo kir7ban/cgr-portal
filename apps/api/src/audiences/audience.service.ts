@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { AuthorizationService } from '../auth/authorization.service';
 
@@ -21,6 +21,7 @@ export interface AudienceDocument {
 
 @Injectable()
 export class AudienceService {
+  private readonly logger = new Logger(AudienceService.name);
   private audiences: Map<string, AudienceDocument> = new Map();
 
   constructor(

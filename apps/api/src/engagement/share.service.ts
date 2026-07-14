@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { AuditingService } from '../database/auditing.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -44,6 +44,7 @@ export interface Share {
  */
 @Injectable()
 export class ShareService {
+  private readonly logger = new Logger(ShareService.name);
   private shares: Map<string, Share> = new Map();
   private sharesByPost: Map<string, string[]> = new Map();
   private sharesByUser: Map<string, string[]> = new Map();
@@ -137,6 +138,8 @@ export class ShareService {
       resource: 'post',
       resourceId: postId,
     });
+
+    this.logger.log(`Post ${postId} shared via ${method} by user ${userId}`);
 
     return share;
   }
