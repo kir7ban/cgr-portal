@@ -1,0 +1,58 @@
+# Capacitor ignore file
+# Excludes files from being copied to native platforms
+
+# Version control
+.git
+.gitignore
+.github
+
+# Development
+node_modules
+.vscode
+.idea
+
+# Build artifacts
+dist
+build
+coverage
+
+# Dependencies
+package-lock.json
+yarn.lock
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE
+*.iml
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+.vitest
+.pytest_cache
+*.test.ts
+*.spec.ts
+
+# Documentation
+*.md
+docs
+
+# CI/CD
+.github/workflows
+.gitlab-ci.yml
+.travis.yml
+
+# Temporary
+tmp
+temp
+*.tmp
+*.log

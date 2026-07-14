@@ -1,0 +1,146 @@
+{
+  "environments": {
+    "dev": {
+      "region": "eastus",
+      "resourceGroup": "cgr-dev-rg",
+      "appServicePlan": "cgr-dev-asp",
+      "appService": "cgr-dev-api",
+      "cosmosdb": {
+        "account": "cgr-dev-db",
+        "database": "cgr_platform",
+        "throughput": 400,
+        "consistency": "Session"
+      },
+      "appServiceSku": "B1",
+      "environment": "development",
+      "features": {
+        "mockAuthEnabled": true,
+        "healthCheckDetailed": true,
+        "debugLogging": true
+      }
+    },
+    "staging": {
+      "region": "westeurope",
+      "resourceGroup": "cgr-staging-rg",
+      "appServicePlan": "cgr-staging-asp",
+      "appService": "cgr-staging-api",
+      "cosmosdb": {
+        "account": "cgr-staging-db",
+        "database": "cgr_platform",
+        "throughput": 600,
+        "consistency": "Session"
+      },
+      "appServiceSku": "S1",
+      "environment": "staging",
+      "features": {
+        "mockAuthEnabled": false,
+        "healthCheckDetailed": true,
+        "debugLogging": false
+      }
+    },
+    "prod": {
+      "region": "westeurope",
+      "resourceGroup": "cgr-prod-rg",
+      "appServicePlan": "cgr-prod-asp",
+      "appService": "cgr-prod-api",
+      "cosmosdb": {
+        "account": "cgr-prod-db",
+        "database": "cgr_platform",
+        "throughput": 1000,
+        "consistency": "Bounded"
+      },
+      "appServiceSku": "P1V2",
+      "environment": "production",
+      "features": {
+        "mockAuthEnabled": false,
+        "healthCheckDetailed": false,
+        "debugLogging": false
+      }
+    }
+  },
+  "cosmosdbCollections": {
+    "posts": {
+      "partitionKey": "/id",
+      "description": "Published posts and drafts",
+      "indexingPolicy": {
+        "automatic": true,
+        "indexingMode": "consistent"
+      }
+    },
+    "comments": {
+      "partitionKey": "/id",
+      "description": "Post comments and replies",
+      "indexingPolicy": {
+        "automatic": true,
+        "indexingMode": "consistent"
+      }
+    },
+    "reactions": {
+      "partitionKey": "/id",
+      "description": "Emoji reactions and likes",
+      "indexingPolicy": {
+        "automatic": true,
+        "indexingMode": "consistent"
+      }
+    },
+    "users": {
+      "partitionKey": "/id",
+      "description": "User profiles and role assignments",
+      "indexingPolicy": {
+        "automatic": true,
+        "indexingMode": "consistent"
+      }
+    },
+    "approvals": {
+      "partitionKey": "/id",
+      "description": "Approval workflow submissions and decisions",
+      "indexingPolicy": {
+        "automatic": true,
+        "indexingMode": "consistent"
+      }
+    },
+    "audit_logs": {
+      "partitionKey": "/timestamp",
+      "description": "Immutable append-only audit trail (3-year retention)",
+      "indexingPolicy": {
+        "automatic": true,
+        "indexingMode": "consistent"
+      },
+      "ttl": 94608000
+    },
+    "analytics": {
+      "partitionKey": "/date",
+      "description": "Daily engagement metrics and analytics",
+      "indexingPolicy": {
+        "automatic": true,
+        "indexingMode": "consistent"
+      }
+    }
+  },
+  "healthCheck": {
+    "enabled": true,
+    "path": "/api/health",
+    "interval": 30,
+    "timeout": 10,
+    "unhealthyThreshold": 3,
+    "healthyThreshold": 2,
+    "endpoints": {
+      "liveness": "/api/health/live",
+      "readiness": "/api/health/ready",
+      "detailed": "/api/health/detailed"
+    }
+  },
+  "deployment": {
+    "buildCommand": "npm run build",
+    "startCommand": "npm start",
+    "runtime": "NODE|18-lts",
+    "nodeVersion": "18",
+    "npmVersion": "9"
+  },
+  "tags": {
+    "project": "cgr-platform",
+    "organization": "bosch",
+    "managedBy": "terraform",
+    "createdBy": "deployment-script"
+  }
+}

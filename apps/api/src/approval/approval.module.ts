@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
-import { PostModule } from '../posts/post.module';
 import { DatabaseModule } from '../database/database.module';
+import { PostModule } from '../posts/post.module';
 import { ApprovalService } from './approval.service';
+import { ApprovalController } from './approval.controller';
 
 @Module({
-  imports: [PostModule, DatabaseModule],
+  imports: [DatabaseModule, PostModule],
   providers: [ApprovalService],
+  controllers: [ApprovalController],
   exports: [ApprovalService],
 })
 export class ApprovalModule {}

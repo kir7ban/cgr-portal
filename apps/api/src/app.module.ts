@@ -7,6 +7,7 @@ import { FeedModule } from './feed/feed.module';
 import { AudienceModule } from './audiences/audience.module';
 import { EngagementModule } from './engagement/engagement.module';
 import { AdvancedModule } from './advanced/advanced.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AdvancedModule } from './advanced/advanced.module';
     AudienceModule,
     EngagementModule,
     AdvancedModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
